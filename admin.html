@@ -1,0 +1,125 @@
+ <!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель администратора — А-Доставка</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        body { background: #111; color: #fff; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1, h2 { color: #ffcc00; margin-bottom: 20px; border-bottom: 2px solid #ffcc00; padding-bottom: 10px; }
+        h2 { margin-top: 30px; font-size: 20px; }
+        .card { background: #222; border: 1px solid #333; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+        .status-badge { display: inline-block; background: #ffcc00; color: #111; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-bottom: 10px; }
+        .btn { background: #27ae60; color: #fff; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn:hover { background: #219653; }
+        .btn-premium { background: #2f80ed; }
+        .btn-premium:hover { background: #1b64c4; }
+        .no-data { color: #666; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Пульт управления «А-Доставка» 🔔</h1>
+
+        <!-- Раздел одобрения Премиумов -->
+        <h2>Заявки на подписку А-Доставка+ PRO 💳</h2>
+        <div id="premiumRequestsContainer">
+            <div class="no-data">Заявок на проверку оплаты нет...</div>
+        </div>
+
+        <!-- Раздел заказов -->
+        <h2>Активные заказы клиентов 📦</h2>
+        <div id="ordersContainer">
+            <div class="no-data">Новых заказов пока нет...</div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBbchav6BoNtfS_YPbJ5w2CuIcMYOi4qUA",
+            authDomain: "a-dostavka.firebaseapp.com",
+            projectId: "a-dostavka",
+            storageBucket: "a-dostavka.firebasestorage.app",
+            messagingSenderId: "476530558236",
+            appId: "1:476530558236:web:d929217d7ed381c484e6d9"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 1. СЛУШАЕМ ЗАЯВКИ НА ПРЕМИУМ
+        db.collection("users").where("premiumRequested", "==", true).onSnapshot((snapshot) => {
+            const container = document.getElementById('premiumRequestsContainer');
+            container.innerHTML = '';
+
+            if (snapshot.empty) {
+                container.innerHTML = '<div class="no-data">Заявок на проверку оплаты нет...</div>';
+                return;
+            }
+
+            snapshot.forEach((doc) => {
+                const user = doc.data();
+                container.innerHTML += `
+                    <div class="card">
+                        <p><strong>Пользователь:</strong> ${doc.id} (Почта подгрузится в базе)</p>
+                        <p>Ожидает подтверждения перевода на 299₽.</p>
+                        <button class="btn btn-premium" onclick="approvePremium('${doc.id}')">✔ Деньги пришли, включить PRO</button>
+                    </div>
+                `;
+            });
+        });
+
+        // Функция одобрения Премиума курьером
+        function approvePremium(userId) {
+            db.collection("users").doc(userId).update({
+                isPremium: true,
+                premiumRequested: false
+            }).then(() => {
+                alert('Подписка активирована для пользователя!');
+            });
+        }
+
+        // 2. СЛУШАЕМ ЗАКАЗЫ С УЧЕТОМ ТИПА ОПЛАТЫ
+        db.collection("orders").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+            const container = document.getElementById('ordersContainer');
+            container.innerHTML = '';
+
+            if (snapshot.empty) {
+                container.innerHTML = '<div class="no-data">Новых заказов пока нет...</div>';
+                return;
+            }
+
+            snapshot.forEach((doc) => {
+                const order = doc.data();
+                
+                if (order.status !== "Выполнен") {
+                    container.innerHTML += `
+                        <div class="card">
+                            <div class="status-badge">${order.status}</div>
+                            <p><strong>От кого:</strong> ${order.userEmail}</p>
+                            <p><strong>Что купить:</strong> ${order.items}</p>
+                            <p><strong>Куда везти:</strong> ${order.address}</p>
+                            <p style="background: #333; padding: 5px; border-radius: 4px; margin: 5px 0;">
+                                <strong>Тип оплаты:</strong> <span style="color:#ffcc00;">${order.paymentMethod || 'Не указан'}</span>
+                            </p>
+                            <p><strong>К оплате за доставку:</strong> ${order.cost}</p>
+                            <button class="btn" onclick="markAsCompleted('${doc.id}')">✔ Заказ доставлен</button>
+                        </div>
+                    `;
+                }
+            });
+        });
+
+        function markAsCompleted(orderId) {
+            db.collection("orders").doc(orderId).update({ status: "Выполнен" })
+            .then(() => alert('Заказ перенесен в архив!'));
+        }
+    </script>
+</body>
+</html>

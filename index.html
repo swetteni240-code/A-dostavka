@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>А-Доставка — Сервис быстрой доставки</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f4f6f9; color: #333; line-height: 1.6; }
+        header { background-color: #ffcc00; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .logo { font-size: 24px; font-weight: bold; color: #111; }
+        .user-status { background: #fff; padding: 5px 10px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        .card { background: #fff; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { margin-bottom: 20px; color: #111; border-bottom: 2px solid #ffcc00; padding-bottom: 8px; display: inline-block; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input[type="text"], input[type="email"], input[type="password"], textarea, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; outline: none; transition: border-color 0.3s; background: #fff; }
+        input:focus, textarea:focus, select:focus { border-color: #ffcc00; }
+        .delivery-type { display: flex; gap: 15px; margin: 15px 0; }
+        .radio-btn { flex: 1; border: 2px solid #ddd; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .radio-btn input { display: none; }
+        .radio-btn.active { border-color: #ffcc00; background-color: #fffdf0; }
+        .btn { display: block; width: 100%; background: #ffcc00; color: #111; border: none; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #e6b800; }
+        .btn-premium { background: #111; color: #fff; }
+        .btn-premium:hover { background: #222; }
+        .btn-small { padding: 8px 12px; font-size: 14px; display: inline-block; width: auto; margin-right: 5px; }
+        .price-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 15px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; }
+        .premium-badge { background: linear-gradient(135deg, #ffe066, #f5b041); color: #111; padding: 2px 8px; border-radius: 4px; font-size: 12px; vertical-align: middle; }
+        .review-item { border-left: 4px solid #ffcc00; padding-left: 15px; margin-bottom: 15px; }
+        .stars { color: #ffcc00; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">А-Доставка</div>
+        <div class="user-status" id="userStatusDisplay">Загрузка профиля...</div>
+    </header>
+
+    <div class="container">
+
+        <!-- Авторизация -->
+        <div class="card" id="authCard">
+            <h2>Вход / Регистрация</h2>
+            <div class="form-group">
+                <label>Электронная почта</label>
+                <input type="email" id="authEmail" placeholder="example@mail.ru">
+            </div>
+            <div class="form-group">
+                <label>Пароль (минимум 6 символов)</label>
+                <input type="password" id="authPassword" placeholder="******">
+            </div>
+            <button class="btn btn-small" onclick="handleSignUp()">Зарегистрироваться</button>
+            <button class="btn btn-small btn-premium" onclick="handleSignIn()">Войти в аккаунт</button>
+        </div>
+        
+        <!-- Блок заказа -->
+        <div class="card">
+            <h2>Оформить доставку</h2>
+            <form id="orderForm">
+                <div class="form-group">
+                    <label for="orderItems">Что вам привезти?</label>
+                    <textarea id="orderItems" rows="3" placeholder="Например: Пицца Маргарита из Додо, молоко 2.5% из Магнита..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Адрес доставки</label>
+                    <input type="text" id="address" placeholder="Улица, дом, квартира" required>
+                </div>
+
+                <!-- НОВОЕ: Способ оплаты -->
+                <div class="form-group">
+                    <label for="paymentMethod">Способ оплаты</label>
+                    <select id="paymentMethod">
+                        <option value="Наличными курьеру">Наличными курьеру при получении</option>
+                        <option value="Перевод на карту">Перевод на карту (СБП) курьеру</option>
+                    </select>
+                </div>
+
+                <label>Вариант доставки</label>
+                <div class="delivery-type">
+                    <div class="radio-btn active" id="typeStandard" onclick="setDeliveryType('standard')">
+                        <input type="radio" name="dtype" value="standard" checked>
+                        Стандартная<br><small>20-30 минут </small>
+                    </div>
+                    <div class="radio-btn" id="typeExpress" onclick="setDeliveryType('express')">
+                        <input type="radio" name="dtype" value="express">
+                        Экспресс <span id="expressPriceTag">+150₽</span><br><small>15-20 и меньше</small>
+                    </div>
+                </div>
+
+                <div class="price-box">
+                    <span>Стоимость доставки:</span>
+                    <span id="finalPrice">150₽</span>
+                </div>
+                <p style="font-size: 13px; color: #666; margin: 5px 0 15px 0;">* (отправьте сумму на т банк по номеру +79771217265 Андрей) Стоимость самих товаров оплачивается отдельно курьеру по чеку.</p>
+
+                <button type="submit" class="btn">Отправить заявку</button>
+            </form>
+        </div>
+
+        <!-- Блок Премиум-подписки (ИСПРАВЛЕНО: Теперь платно) -->
+        <div class="card" id="premiumCard" style="display: none;">
+            <h2>Подписка А-Доставка+ <span class="premium-badge">PRO</span></h2>
+            <p>Получите максимум выгоды всего за 299₽ в месяц:</p>
+            <ul style="margin: 10px 0 20px 20px;">
+                <li><strong>Бесплатный Экспресс</strong> (всегда вместо 150₽)</li>
+                <li><strong>Повышенный кэшбэк 7%</strong> на доставку</li>
+                <li>Списание бонусов до 100% от стоимости доставки</li>
+            </ul>
+            <button class="btn btn-premium" onclick="requestPremium()">Оформить подписку за 299₽</button>
+        </div>
+
+        <!-- Отзывы -->
+        <div class="card">
+            <h2>Отзывы о курьерах</h2>
+            <div id="reviewsList">
+                <div class="review-item">
+                    <div class="stars">★★★★★</div>
+                    <p><strong>Андрей (Курьер):</strong> Привез всё очень быстро, продукты свежие, чек предоставил. Спасибо!</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBbchav6BoNtfS_YPbJ5w2CuIcMYOi4qUA",
+            authDomain: "a-dostavka.firebaseapp.com",
+            projectId: "a-dostavka",
+            storageBucket: "a-dostavka.firebasestorage.app",
+            messagingSenderId: "476530558236",
+            appId: "1:476530558236:web:d929217d7ed381c484e6d9",
+            measurementId: "G-XJEJXMEJ75"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let currentUser = null;
+        let userStats = { isPremium: false, bonuses: 100, premiumRequested: false };
+
+        let currentDeliveryType = 'standard';
+        let baseStandardPrice = 150;
+        let baseExpressPrice = 150;
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('authCard').style.display = 'none';
+                
+                // Слушаем профиль юзера в реальном времени, чтобы статус PRO включался сразу после одобрения админом
+                db.collection("users").doc(user.uid).onSnapshot((doc) => {
+                    if (doc.exists) {
+                        userStats = doc.data();
+                    } else {
+                        db.collection("users").doc(user.uid).set(userStats);
+                    }
+                    updateUI();
+                });
+            } else {
+                currentUser = null;
+                document.getElementById('authCard').style.display = 'block';
+                document.getElementById('premiumCard').style.display = 'none';
+                document.getElementById('userStatusDisplay').innerText = "Вы не вошли в систему";
+            }
+        });
+
+        function updateUI() {
+            if (userStats.isPremium) {
+                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | <span class="premium-badge">А-Доставка+</span> (Бонусы: ${userStats.bonuses}₽)`;
+                document.getElementById('premiumCard').style.display = 'none';
+                document.getElementById('expressPriceTag').innerText = '0₽ (Премиум)';
+            } else {
+                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | Бонусы: ${userStats.bonuses}₽`;
+                document.getElementById('premiumCard').style.display = 'block';
+                document.getElementById('expressPriceTag').innerText = '+150₽';
+                
+                if(userStats.premiumRequested) {
+                    document.getElementById('premiumCard').innerHTML = `<h2>Подписка PRO ⏳</h2><p style="color: #e67e22; font-weight: bold;">Заявка на рассмотрении. Переведите 299₽ на карту курьера по номеру телефона. Подписка активируется после проверки оплаты!</p>`;
+                }
+            }
+            calculatePrice();
+        }
+
+        function requestPremium() {
+            if (!currentUser) return alert('Сначала войдите в аккаунт!');
+            
+            // Запрашиваем оплату у пользователя
+            let confirmPay = confirm("Для активации А-Доставка+ переведите 299₽ на карту Т-Банк по номеру: +79771217265 (Андрей Н.). После перевода нажмите ОК.");
+            
+            if(confirmPay) {
+                userStats.premiumRequested = true;
+                db.collection("users").doc(currentUser.uid).update({ premiumRequested: true });
+                alert('Заявка отправлена администратору! Ожидайте подтверждения.');
+            }
+        }
+
+        function handleSignUp() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            auth.createUserWithEmailAndPassword(email, password).catch(err => alert(err.message));
+        }
+
+        function handleSignIn() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
+        }
+
+        function calculatePrice() {
+            let price = baseStandardPrice;
+            if (currentDeliveryType === 'express') {
+                price = userStats.isPremium ? baseStandardPrice : baseStandardPrice + baseExpressPrice;
+            }
+            document.getElementById('finalPrice').innerText = price + '₽';
+        }
+
+        function setDeliveryType(type) {
+            currentDeliveryType = type;
+            document.getElementById('typeStandard').classList.remove('active');
+            document.getElementById('typeExpress').classList.remove('active');
+            document.getElementById(type === 'standard' ? 'typeStandard' : 'typeExpress').classList.add('active');
+            calculatePrice();
+        }
+
+        document.getElementById('orderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentUser) return alert('Сначала войдите в систему!');
+
+            let items = document.getElementById('orderItems').value;
+            let address = document.getElementById('address').value;
+            let payMethod = document.getElementById('paymentMethod').value;
+            let finalCost = document.getElementById('finalPrice').innerText;
+
+            let earnedBonuses = Math.round(parseInt(finalCost) * (userStats.isPremium ? 0.07 : 0.03));
+            userStats.bonuses += earnedBonuses;
+            db.collection("users").doc(currentUser.uid).update({ bonuses: userStats.bonuses });
+
+            db.collection("orders").add({
+                userId: currentUser.uid,
+                userEmail: currentUser.email,
+                items: items,
+                address: address,
+                paymentMethod: payMethod,
+                cost: finalCost,
+                status: "Новый",
+                createdAt: new Date()
+            }).then(() => {
+                alert(`Заказ принят! Выбран способ: ${payMethod}. Ожидайте курьера.`);
+                document.getElementById('orderForm').reset();
+            });
+        });
+    </script>
+</body>
+</html>
