@@ -6,9 +6,11 @@
     <title>А-Доставка — Сервис быстрой доставки</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: #f4f6f9; color: #333; line-height: 1.6; }
+        body { background-color: #f4f6f9; color: #333; line-height: 1.6; padding-bottom: 60px; }
         header { background-color: #ffcc00; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .logo { font-size: 24px; font-weight: bold; color: #111; }
+        .logo-block { display: flex; flex-direction: column; }
+        .logo { font-size: 24px; font-weight: bold; color: #111; line-height: 1.2; }
+        .work-time { font-size: 12px; font-weight: 600; color: #444; margin-top: 2px; }
         .user-status { background: #fff; padding: 5px 10px; border-radius: 20px; font-size: 14px; font-weight: 600; }
         .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
         .card { background: #fff; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
@@ -28,14 +30,24 @@
         .btn-small { padding: 8px 12px; font-size: 14px; display: inline-block; width: auto; margin-right: 5px; }
         .price-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 15px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; }
         .premium-badge { background: linear-gradient(135deg, #ffe066, #f5b041); color: #111; padding: 2px 8px; border-radius: 4px; font-size: 12px; vertical-align: middle; }
-        .review-item { border-left: 4px solid #ffcc00; padding-left: 15px; margin-bottom: 15px; }
-        .stars { color: #ffcc00; margin-bottom: 5px; }
+        
+        /* Стили чата техподдержки */
+        .chat-box { display: flex; flex-direction: column; height: 300px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; background: #fafafa; overflow-y: auto; padding: 10px; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 14px; word-break: break-word; }
+        .msg.client { background: #ffcc00; color: #111; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg.admin { background: #e0e0e0; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .chat-input-group { display: flex; gap: 10px; }
+        .chat-input-group input { flex: 1; }
+        .chat-input-group .btn { width: auto; padding: 0 20px; font-size: 15px; }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo">А-Доставка</div>
+        <div class="logo-block">
+            <div class="logo">А-Доставка</div>
+            <div class="work-time">🕒 Время работы: 12:00-20:00</div>
+        </div>
         <div class="user-status" id="userStatusDisplay">Загрузка профиля...</div>
     </header>
 
@@ -62,7 +74,7 @@
             <form id="orderForm">
                 <div class="form-group">
                     <label for="orderItems">Что вам привезти?</label>
-                    <textarea id="orderItems" rows="3" placeholder="Например: Пицца Маргарита из Додо, молоко 2.5% из Магнита..." required></textarea>
+                    <textarea id="orderItems" rows="3" placeholder="Например: Пицца Маргарита из Додо, молоко 2.5%..." required></textarea>
                 </div>
 
                 <div class="form-group">
@@ -70,7 +82,6 @@
                     <input type="text" id="address" placeholder="Улица, дом, квартира" required>
                 </div>
 
-                <!-- НОВОЕ: Способ оплаты -->
                 <div class="form-group">
                     <label for="paymentMethod">Способ оплаты</label>
                     <select id="paymentMethod">
@@ -83,11 +94,11 @@
                 <div class="delivery-type">
                     <div class="radio-btn active" id="typeStandard" onclick="setDeliveryType('standard')">
                         <input type="radio" name="dtype" value="standard" checked>
-                        Стандартная<br><small>20-30 минут </small>
+                        Стандартная<br><small>20-30 минут</small>
                     </div>
                     <div class="radio-btn" id="typeExpress" onclick="setDeliveryType('express')">
                         <input type="radio" name="dtype" value="express">
-                        Экспресс <span id="expressPriceTag">+150₽</span><br><small>15-20 и меньше</small>
+                        Экспресс <span id="expressPriceTag">+150₽</span><br><small>15-20 минут</small>
                     </div>
                 </div>
 
@@ -95,32 +106,32 @@
                     <span>Стоимость доставки:</span>
                     <span id="finalPrice">150₽</span>
                 </div>
-                <p style="font-size: 13px; color: #666; margin: 5px 0 15px 0;">* (отправьте сумму на т банк по номеру +79771217265 Андрей) Стоимость самих товаров оплачивается отдельно курьеру по чеку.</p>
+                <p style="font-size: 13px; color: #666; margin: 5px 0 15px 0;">* Стоимость самих товаров оплачивается отдельно курьеру по чеку.</p>
 
                 <button type="submit" class="btn">Отправить заявку</button>
             </form>
         </div>
 
-        <!-- Блок Премиум-подписки (ИСПРАВЛЕНО: Теперь платно) -->
+        <!-- Подписка А-Доставка+ -->
         <div class="card" id="premiumCard" style="display: none;">
             <h2>Подписка А-Доставка+ <span class="premium-badge">PRO</span></h2>
             <p>Получите максимум выгоды всего за 299₽ в месяц:</p>
             <ul style="margin: 10px 0 20px 20px;">
                 <li><strong>Бесплатный Экспресс</strong> (всегда вместо 150₽)</li>
-                <li><strong>Повышенный кэшбэк 7%</strong> на доставку</li>
+                <li><strong>Повышенный кэшбэк 7%</strong> на доставку (начисляется админом)</li>
                 <li>Списание бонусов до 100% от стоимости доставки</li>
             </ul>
             <button class="btn btn-premium" onclick="requestPremium()">Оформить подписку за 299₽</button>
         </div>
 
-        <!-- Отзывы -->
-        <div class="card">
-            <h2>Отзывы о курьерах</h2>
-            <div id="reviewsList">
-                <div class="review-item">
-                    <div class="stars">★★★★★</div>
-                    <p><strong>Андрей (Курьер):</strong> Привез всё очень быстро, продукты свежие, чек предоставил. Спасибо!</p>
-                </div>
+        <!-- НОВОЕ: Чат техподдержки -->
+        <div class="card" id="chatCard" style="display: none;">
+            <h2>Чат с техподдержкой / Курьером</h2>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Здесь вы можете уточнить детали, дополнить или отменить заказ.</p>
+            <div class="chat-box" id="chatBox"></div>
+            <div class="chat-input-group">
+                <input type="text" id="chatMessageInput" placeholder="Напишите сообщение...">
+                <button class="btn" onclick="sendChatMessage()">Отправить</button>
             </div>
         </div>
 
@@ -147,7 +158,6 @@
 
         let currentUser = null;
         let userStats = { isPremium: false, bonuses: 100, premiumRequested: false };
-
         let currentDeliveryType = 'standard';
         let baseStandardPrice = 150;
         let baseExpressPrice = 150;
@@ -156,8 +166,8 @@
             if (user) {
                 currentUser = user;
                 document.getElementById('authCard').style.display = 'none';
+                document.getElementById('chatCard').style.display = 'block';
                 
-                // Слушаем профиль юзера в реальном времени, чтобы статус PRO включался сразу после одобрения админом
                 db.collection("users").doc(user.uid).onSnapshot((doc) => {
                     if (doc.exists) {
                         userStats = doc.data();
@@ -166,21 +176,24 @@
                     }
                     updateUI();
                 });
+
+                loadChatMessages();
             } else {
                 currentUser = null;
                 document.getElementById('authCard').style.display = 'block';
                 document.getElementById('premiumCard').style.display = 'none';
+                document.getElementById('chatCard').style.display = 'none';
                 document.getElementById('userStatusDisplay').innerText = "Вы не вошли в систему";
             }
         });
 
         function updateUI() {
             if (userStats.isPremium) {
-                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | <span class="premium-badge">А-Доставка+</span> (Бонусы: ${userStats.bonuses}₽)`;
+                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | <span class="premium-badge">А-Доставка+</span> (Бонусы: ${userStats.bonuses || 0}₽)`;
                 document.getElementById('premiumCard').style.display = 'none';
                 document.getElementById('expressPriceTag').innerText = '0₽ (Премиум)';
             } else {
-                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | Бонусы: ${userStats.bonuses}₽`;
+                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | Бонусы: ${userStats.bonuses || 0}₽`;
                 document.getElementById('premiumCard').style.display = 'block';
                 document.getElementById('expressPriceTag').innerText = '+150₽';
                 
@@ -193,12 +206,8 @@
 
         function requestPremium() {
             if (!currentUser) return alert('Сначала войдите в аккаунт!');
-            
-            // Запрашиваем оплату у пользователя
-            let confirmPay = confirm("Для активации А-Доставка+ переведите 299₽ на карту Т-Банк по номеру: +79771217265 (Андрей Н.). После перевода нажмите ОК.");
-            
+            let confirmPay = confirm("Для активации А-Доставка+ переведите 299₽ на карту Сбербанк/Т-Банк по номеру: +79771217265 (Андрей Н.). После перевода нажмите ОК.");
             if(confirmPay) {
-                userStats.premiumRequested = true;
                 db.collection("users").doc(currentUser.uid).update({ premiumRequested: true });
                 alert('Заявка отправлена администратору! Ожидайте подтверждения.');
             }
@@ -241,9 +250,8 @@
             let payMethod = document.getElementById('paymentMethod').value;
             let finalCost = document.getElementById('finalPrice').innerText;
 
-            let earnedBonuses = Math.round(parseInt(finalCost) * (userStats.isPremium ? 0.07 : 0.03));
-            userStats.bonuses += earnedBonuses;
-            db.collection("users").doc(currentUser.uid).update({ bonuses: userStats.bonuses });
+            // Расчёт бонусов (3% обычный, 7% премиум), но в базу юзеру НЕ пишем, пишем только в сам заказ для админа
+            let pendingBonuses = Math.round(parseInt(finalCost) * (userStats.isPremium ? 0.07 : 0.03));
 
             db.collection("orders").add({
                 userId: currentUser.uid,
@@ -252,6 +260,7 @@
                 address: address,
                 paymentMethod: payMethod,
                 cost: finalCost,
+                calculatedBonuses: pendingBonuses, // Передаем админу информацию о бонусах
                 status: "Новый",
                 createdAt: new Date()
             }).then(() => {
@@ -259,6 +268,40 @@
                 document.getElementById('orderForm').reset();
             });
         });
+
+        // ФУНКЦИИ ЧАТА ТЕХПОДДЕРЖКИ
+        function loadChatMessages() {
+            db.collection("chats")
+              .where("userId", "==", currentUser.uid)
+              .orderBy("createdAt", "asc")
+              .onSnapshot((snapshot) => {
+                  const chatBox = document.getElementById('chatBox');
+                  chatBox.innerHTML = '';
+                  snapshot.forEach((doc) => {
+                      const msgData = doc.data();
+                      const msgClass = msgData.sender === 'client' ? 'client' : 'admin';
+                      chatBox.innerHTML += `<div class="msg ${msgClass}">${msgData.text}</div>`;
+                  });
+                  chatBox.scrollTop = chatBox.scrollHeight;
+              });
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatMessageInput');
+            const text = input.value.trim();
+            if(!text || !currentUser) return;
+
+            db.collection("chats").add({
+                userId: currentUser.uid,
+                userEmail: currentUser.email,
+                sender: 'client',
+                text: text,
+                createdAt: new Date()
+            }).then(() => {
+                input.value = '';
+            });
+        }
     </script>
 </body>
 </html>
+                

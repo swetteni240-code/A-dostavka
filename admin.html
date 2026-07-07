@@ -7,7 +7,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
         body { background: #111; color: #fff; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         h1, h2 { color: #ffcc00; margin-bottom: 20px; border-bottom: 2px solid #ffcc00; padding-bottom: 10px; }
         h2 { margin-top: 30px; font-size: 20px; }
         .card { background: #222; border: 1px solid #333; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
@@ -16,7 +16,22 @@
         .btn:hover { background: #219653; }
         .btn-premium { background: #2f80ed; }
         .btn-premium:hover { background: #1b64c4; }
+        .btn-danger { background: #c0392b; margin-left: 10px; }
+        .btn-danger:hover { background: #a93226; }
         .no-data { color: #666; font-size: 16px; }
+
+        /* Стили админ-чата */
+        .chat-layout { display: flex; gap: 20px; height: 350px; background: #222; border-radius: 8px; border: 1px solid #333; overflow: hidden; }
+        .chat-users-list { width: 30%; background: #1a1a1a; border-right: 1px solid #333; overflow-y: auto; padding: 10px; }
+        .user-tab { padding: 10px; background: #2b2b2b; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 13px; text-overflow: ellipsis; overflow: hidden; }
+        .user-tab.active { background: #ffcc00; color: #111; font-weight: bold; }
+        .chat-window { width: 70%; display: flex; flex-direction: column; padding: 15px; }
+        .chat-messages { flex: 1; overflow-y: auto; background: #151515; border-radius: 6px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
+        .admin-msg { max-width: 75%; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; word-break: break-word; }
+        .admin-msg.client { background: #444; color: #fff; align-self: flex-start; }
+        .admin-msg.admin { background: #ffcc00; color: #111; align-self: flex-end; }
+        .admin-chat-input { display: flex; gap: 10px; }
+        .admin-chat-input input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; outline: none; }
     </style>
 </head>
 <body>
@@ -24,16 +39,33 @@
     <div class="container">
         <h1>Пульт управления «А-Доставка» 🔔</h1>
 
-        <!-- Раздел одобрения Премиумов -->
+        <!-- Заявки на Премиум -->
         <h2>Заявки на подписку А-Доставка+ PRO 💳</h2>
         <div id="premiumRequestsContainer">
             <div class="no-data">Заявок на проверку оплаты нет...</div>
         </div>
 
-        <!-- Раздел заказов -->
+        <!-- Активные заказы -->
         <h2>Активные заказы клиентов 📦</h2>
         <div id="ordersContainer">
             <div class="no-data">Новых заказов пока нет...</div>
+        </div>
+
+        <!-- ЧАТЫ ТЕХПОДДЕРЖКИ -->
+        <h2>Чат техподдержки с клиентами 💬</h2>
+        <div class="chat-layout">
+            <div class="chat-users-list" id="chatUsersList">
+                <!-- Сюда подгружаются пользователи, которые написали -->
+            </div>
+            <div class="chat-window">
+                <div class="chat-messages" id="adminChatMessages">
+                    <div class="no-data" style="text-align:center; margin-top:100px;">Выберите чат слева для начала общения</div>
+                </div>
+                <div class="admin-chat-input">
+                    <input type="text" id="adminChatInput" placeholder="Введите ответ..." disabled>
+                    <button class="btn" style="margin:0;" id="adminSendBtn" onclick="sendAdminReply()" disabled>Ответить</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -53,21 +85,21 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        let activeChatUserId = null;
+        let activeChatUserEmail = '';
+
         // 1. СЛУШАЕМ ЗАЯВКИ НА ПРЕМИУМ
         db.collection("users").where("premiumRequested", "==", true).onSnapshot((snapshot) => {
             const container = document.getElementById('premiumRequestsContainer');
             container.innerHTML = '';
-
             if (snapshot.empty) {
                 container.innerHTML = '<div class="no-data">Заявок на проверку оплаты нет...</div>';
                 return;
             }
-
             snapshot.forEach((doc) => {
-                const user = doc.data();
                 container.innerHTML += `
                     <div class="card">
-                        <p><strong>Пользователь:</strong> ${doc.id} (Почта подгрузится в базе)</p>
+                        <p><strong>ID Пользователя:</strong> ${doc.id}</p>
                         <p>Ожидает подтверждения перевода на 299₽.</p>
                         <button class="btn btn-premium" onclick="approvePremium('${doc.id}')">✔ Деньги пришли, включить PRO</button>
                     </div>
@@ -75,30 +107,22 @@
             });
         });
 
-        // Функция одобрения Премиума курьером
         function approvePremium(userId) {
-            db.collection("users").doc(userId).update({
-                isPremium: true,
-                premiumRequested: false
-            }).then(() => {
-                alert('Подписка активирована для пользователя!');
-            });
+            db.collection("users").doc(userId).update({ isPremium: true, premiumRequested: false })
+            .then(() => alert('Подписка PRO активирована!'));
         }
 
-        // 2. СЛУШАЕМ ЗАКАЗЫ С УЧЕТОМ ТИПА ОПЛАТЫ
+        // 2. СЛУШАЕМ ЗАКАЗЫ + НАЧИСЛЕНИЕ БОНУСОВ ПО КНОПКЕ
         db.collection("orders").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
             const container = document.getElementById('ordersContainer');
             container.innerHTML = '';
-
             if (snapshot.empty) {
                 container.innerHTML = '<div class="no-data">Новых заказов пока нет...</div>';
                 return;
             }
-
             snapshot.forEach((doc) => {
                 const order = doc.data();
-                
-                if (order.status !== "Выполнен") {
+                if (order.status !== "Выполнен" && order.status !== "Отменен") {
                     container.innerHTML += `
                         <div class="card">
                             <div class="status-badge">${order.status}</div>
@@ -109,16 +133,109 @@
                                 <strong>Тип оплаты:</strong> <span style="color:#ffcc00;">${order.paymentMethod || 'Не указан'}</span>
                             </p>
                             <p><strong>К оплате за доставку:</strong> ${order.cost}</p>
-                            <button class="btn" onclick="markAsCompleted('${doc.id}')">✔ Заказ доставлен</button>
+                            <p style="color: #2ecc71; font-weight: bold;">Будет начислено бонусов после закрытия: +${order.calculatedBonuses || 0}₽</p>
+                            
+                            <button class="btn" onclick="completeOrder('${doc.id}', '${order.userId}', ${order.calculatedBonuses || 0})">✔ Заказ доставлен и оплачен (+бонусы)</button>
+                            <button class="btn btn-danger" onclick="cancelOrder('${doc.id}')">❌ Отменить заказ</button>
                         </div>
                     `;
                 }
             });
         });
 
-        function markAsCompleted(orderId) {
+        // Функция завершения заказа с начислением бонусов
+        function completeOrder(orderId, userId, bonusesToAward) {
+            // Сначала обновляем статус заказа
             db.collection("orders").doc(orderId).update({ status: "Выполнен" })
-            .then(() => alert('Заказ перенесен в архив!'));
+            .then(() => {
+                // Затем берем профиль юзера, смотрим текущие бонусы и добавляем новые
+                const userRef = db.collection("users").doc(userId);
+                db.runTransaction((transaction) => {
+                    return transaction.get(userRef).then((userDoc) => {
+                        if (!userDoc.exists) return;
+                        let currentBonuses = userDoc.data().bonuses || 0;
+                        transaction.update(userRef, { bonuses: currentBonuses + bonusesToAward });
+                    });
+                }).then(() => {
+                    alert('Заказ выполнен! Клиенту начислены бонусные рубли.');
+                });
+            });
+        }
+
+        function cancelOrder(orderId) {
+            if(confirm("Вы уверены, что хотите отменить этот заказ?")) {
+                db.collection("orders").doc(orderId).update({ status: "Отменен" })
+                .then(() => alert('Заказ отменен.'));
+            }
+        }
+
+        // 3. УПРАВЛЕНИЕ ЧАТАМИ ТЕХПОДДЕРЖКИ
+        db.collection("chats").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+            const usersListContainer = document.getElementById('chatUsersList');
+            const uniqueUsers = {};
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (!uniqueUsers[data.userId]) {
+                    uniqueUsers[data.userId] = data.userEmail || "Пользователь";
+                }
+            });
+
+            usersListContainer.innerHTML = '';
+            for (let uid in uniqueUsers) {
+                const activeClass = uid === activeChatUserId ? 'active' : '';
+                usersListContainer.innerHTML += `
+                    <div class="user-tab ${activeClass}" onclick="selectChat('${uid}', '${uniqueUsers[uid]}')">
+                        ${uniqueUsers[uid]}
+                    </div>
+                `;
+            }
+        });
+
+        function selectChat(userId, userEmail) {
+            activeChatUserId = userId;
+            activeChatUserEmail = userEmail;
+
+            document.getElementById('adminChatInput').disabled = false;
+            document.getElementById('adminSendBtn').disabled = false;
+
+            // Перерисовываем активную вкладку
+            const tabs = document.getElementsByClassName('user-tab');
+            for(let tab of tabs) {
+                tab.classList.remove('active');
+                if(tab.innerText === userEmail) tab.classList.add('active');
+            }
+
+            // Слушаем сообщения конкретного выбранного чата
+            db.collection("chats")
+              .where("userId", "==", userId)
+              .orderBy("createdAt", "asc")
+              .onSnapshot((snapshot) => {
+                  const msgContainer = document.getElementById('adminChatMessages');
+                  msgContainer.innerHTML = '';
+                  snapshot.forEach((doc) => {
+                      const msg = doc.data();
+                      const msgClass = msg.sender === 'admin' ? 'admin' : 'client';
+                      msgContainer.innerHTML += `<div class="admin-msg ${msgClass}"><strong>${msg.sender === 'admin' ? 'Вы' : 'Клиент'}:</strong> ${msg.text}</div>`;
+                  });
+                  msgContainer.scrollTop = msgContainer.scrollHeight;
+              });
+        }
+
+        function sendAdminReply() {
+            const input = document.getElementById('adminChatInput');
+            const text = input.value.trim();
+            if(!text || !activeChatUserId) return;
+
+            db.collection("chats").add({
+                userId: activeChatUserId,
+                userEmail: activeChatUserEmail,
+                sender: 'admin',
+                text: text,
+                createdAt: new Date()
+            }).then(() => {
+                input.value = '';
+            });
         }
     </script>
 </body>
