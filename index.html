@@ -28,10 +28,15 @@
         .btn-premium { background: #111; color: #fff; }
         .btn-premium:hover { background: #222; }
         .btn-small { padding: 8px 12px; font-size: 14px; display: inline-block; width: auto; margin-right: 5px; }
-        .price-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 15px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; }
+        .price-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 15px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; flex-direction: column; gap: 5px; }
+        .price-row { display: flex; justify-content: space-between; width: 100%; }
         .premium-badge { background: linear-gradient(135deg, #ffe066, #f5b041); color: #111; padding: 2px 8px; border-radius: 4px; font-size: 12px; vertical-align: middle; }
         
-        /* Стили чата техподдержки */
+        /* Чекбокс бонусов */
+        .bonus-switch { display: flex; align-items: center; gap: 10px; background: #fffdf0; border: 1px dashed #ffcc00; padding: 12px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; }
+        .bonus-switch input { width: 20px; height: 20px; cursor: pointer; }
+
+        /* Стили чата */
         .chat-box { display: flex; flex-direction: column; height: 300px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 15px; background: #fafafa; overflow-y: auto; padding: 10px; }
         .msg { max-width: 75%; padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 14px; word-break: break-word; }
         .msg.client { background: #ffcc00; color: #111; align-self: flex-end; border-bottom-right-radius: 2px; }
@@ -53,7 +58,6 @@
 
     <div class="container">
 
-        <!-- Авторизация -->
         <div class="card" id="authCard">
             <h2>Вход / Регистрация</h2>
             <div class="form-group">
@@ -68,7 +72,6 @@
             <button class="btn btn-small btn-premium" onclick="handleSignIn()">Войти в аккаунт</button>
         </div>
         
-        <!-- Блок заказа -->
         <div class="card">
             <h2>Оформить доставку</h2>
             <form id="orderForm">
@@ -102,9 +105,20 @@
                     </div>
                 </div>
 
+                <div class="bonus-switch" onclick="toggleBonusUse(event)">
+                    <input type="checkbox" id="useBonusesCheckbox" onchange="calculatePrice()">
+                    <label style="margin:0; cursor:pointer;" id="bonusCheckboxLabel">Списать бонусы (Доступно: 0₽)</label>
+                </div>
+
                 <div class="price-box">
-                    <span>Стоимость доставки:</span>
-                    <span id="finalPrice">150₽</span>
+                    <div class="price-row" id="bonusDiscountRow" style="display: none; color: #2ecc71; font-size: 15px;">
+                        <span>Списано бонусов:</span>
+                        <span id="bonusDiscountValue">-0₽</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Стоимость доставки:</span>
+                        <span id="finalPrice">150₽</span>
+                    </div>
                 </div>
                 <p style="font-size: 13px; color: #666; margin: 5px 0 15px 0;">* Стоимость самих товаров оплачивается отдельно курьеру по чеку.</p>
 
@@ -112,7 +126,6 @@
             </form>
         </div>
 
-        <!-- Подписка А-Доставка+ -->
         <div class="card" id="premiumCard" style="display: none;">
             <h2>Подписка А-Доставка+ <span class="premium-badge">PRO</span></h2>
             <p>Получите максимум выгоды всего за 299₽ в месяц:</p>
@@ -124,7 +137,6 @@
             <button class="btn btn-premium" onclick="requestPremium()">Оформить подписку за 299₽</button>
         </div>
 
-        <!-- НОВОЕ: Чат техподдержки -->
         <div class="card" id="chatCard" style="display: none;">
             <h2>Чат с техподдержкой / Курьером</h2>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Здесь вы можете уточнить детали, дополнить или отменить заказ.</p>
@@ -157,10 +169,12 @@
         const auth = firebase.auth();
 
         let currentUser = null;
-        let userStats = { isPremium: false, bonuses: 100, premiumRequested: false };
+        let userStats = { isPremium: false, bonuses: 0, premiumRequested: false };
         let currentDeliveryType = 'standard';
         let baseStandardPrice = 150;
         let baseExpressPrice = 150;
+        let finalCostWithBonuses = 150;
+        let bonusesToSubtract = 0;
 
         auth.onAuthStateChanged((user) => {
             if (user) {
@@ -174,6 +188,8 @@
                     } else {
                         db.collection("users").doc(user.uid).set(userStats);
                     }
+                    if(userStats.bonuses === undefined) userStats.bonuses = 0;
+                    document.getElementById('bonusCheckboxLabel').innerText = `Списать бонусы (Доступно: ${userStats.bonuses}₽)`;
                     updateUI();
                 });
 
@@ -188,12 +204,13 @@
         });
 
         function updateUI() {
+            let userBonusBalance = userStats.bonuses || 0;
             if (userStats.isPremium) {
-                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | <span class="premium-badge">А-Доставка+</span> (Бонусы: ${userStats.bonuses || 0}₽)`;
+                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | <span class="premium-badge">А-Доставка+</span> (Бонусы: ${userBonusBalance}₽)`;
                 document.getElementById('premiumCard').style.display = 'none';
                 document.getElementById('expressPriceTag').innerText = '0₽ (Премиум)';
             } else {
-                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | Бонусы: ${userStats.bonuses || 0}₽`;
+                document.getElementById('userStatusDisplay').innerHTML = `Логин: ${currentUser.email} | Бонусы: ${userBonusBalance}₽`;
                 document.getElementById('premiumCard').style.display = 'block';
                 document.getElementById('expressPriceTag').innerText = '+150₽';
                 
@@ -201,6 +218,47 @@
                     document.getElementById('premiumCard').innerHTML = `<h2>Подписка PRO ⏳</h2><p style="color: #e67e22; font-weight: bold;">Заявка на рассмотрении. Переведите 299₽ на карту курьера по номеру телефона. Подписка активируется после проверки оплаты!</p>`;
                 }
             }
+            calculatePrice();
+        }
+
+        function toggleBonusUse(e) {
+            if(e.target.id !== 'useBonusesCheckbox') {
+                const cb = document.getElementById('useBonusesCheckbox');
+                cb.checked = !cb.checked;
+                calculatePrice();
+            }
+        }
+
+        function calculatePrice() {
+            let rawPrice = baseStandardPrice;
+            if (currentDeliveryType === 'express') {
+                rawPrice = userStats.isPremium ? baseStandardPrice : baseStandardPrice + baseExpressPrice;
+            }
+
+            const checkbox = document.getElementById('useBonusesCheckbox');
+            const discountRow = document.getElementById('bonusDiscountRow');
+            let userBonusBalance = userStats.bonuses || 0;
+
+            if (checkbox && checkbox.checked && userBonusBalance > 0) {
+                bonusesToSubtract = Math.min(rawPrice, userBonusBalance); 
+                finalCostWithBonuses = rawPrice - bonusesToSubtract;
+                
+                discountRow.style.display = 'flex';
+                document.getElementById('bonusDiscountValue').innerText = `-${bonusesToSubtract}₽`;
+            } else {
+                bonusesToSubtract = 0;
+                finalCostWithBonuses = rawPrice;
+                if(discountRow) discountRow.style.display = 'none';
+            }
+
+            document.getElementById('finalPrice').innerText = finalCostWithBonuses + '₽';
+        }
+
+        function setDeliveryType(type) {
+            currentDeliveryType = type;
+            document.getElementById('typeStandard').classList.remove('active');
+            document.getElementById('typeExpress').classList.remove('active');
+            document.getElementById(type === 'standard' ? 'typeStandard' : 'typeExpress').classList.add('active');
             calculatePrice();
         }
 
@@ -225,22 +283,6 @@
             auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
         }
 
-        function calculatePrice() {
-            let price = baseStandardPrice;
-            if (currentDeliveryType === 'express') {
-                price = userStats.isPremium ? baseStandardPrice : baseStandardPrice + baseExpressPrice;
-            }
-            document.getElementById('finalPrice').innerText = price + '₽';
-        }
-
-        function setDeliveryType(type) {
-            currentDeliveryType = type;
-            document.getElementById('typeStandard').classList.remove('active');
-            document.getElementById('typeExpress').classList.remove('active');
-            document.getElementById(type === 'standard' ? 'typeStandard' : 'typeExpress').classList.add('active');
-            calculatePrice();
-        }
-
         document.getElementById('orderForm').addEventListener('submit', function(e) {
             e.preventDefault();
             if (!currentUser) return alert('Сначала войдите в систему!');
@@ -248,10 +290,17 @@
             let items = document.getElementById('orderItems').value;
             let address = document.getElementById('address').value;
             let payMethod = document.getElementById('paymentMethod').value;
-            let finalCost = document.getElementById('finalPrice').innerText;
 
-            // Расчёт бонусов (3% обычный, 7% премиум), но в базу юзеру НЕ пишем, пишем только в сам заказ для админа
-            let pendingBonuses = Math.round(parseInt(finalCost) * (userStats.isPremium ? 0.07 : 0.03));
+            // Расчёт бонусов, которые КЛИЕНТ ПОЛУЧИТ ПОСЛЕ ОПЛАТЫ (считается от реально заплаченных денег)
+            let pendingBonuses = Math.round(finalCostWithBonuses * (userStats.isPremium ? 0.07 : 0.03));
+            let finalSpentBonuses = bonusesToSubtract; // Сколько бонусов списываем прямо сейчас
+
+            // Списываем бонусы с аккаунта пользователя сразу при оформлении заказа
+            if (finalSpentBonuses > 0) {
+                db.collection("users").doc(currentUser.uid).update({
+                    bonuses: (userStats.bonuses - finalSpentBonuses)
+                });
+            }
 
             db.collection("orders").add({
                 userId: currentUser.uid,
@@ -259,26 +308,36 @@
                 items: items,
                 address: address,
                 paymentMethod: payMethod,
-                cost: finalCost,
-                calculatedBonuses: pendingBonuses, // Передаем админу информацию о бонусах
+                cost: finalCostWithBonuses + '₽',
+                spentBonuses: finalSpentBonuses,
+                calculatedBonuses: pendingBonuses, 
                 status: "Новый",
                 createdAt: new Date()
             }).then(() => {
-                alert(`Заказ принят! Выбран способ: ${payMethod}. Ожидайте курьера.`);
+                alert(`Заказ принят! Списано бонусов: ${finalSpentBonuses}₽. К оплате: ${finalCostWithBonuses}₽. Ожидайте курьера.`);
+                document.getElementById('useBonusesCheckbox').checked = false;
                 document.getElementById('orderForm').reset();
+                calculatePrice();
             });
         });
 
-        // ФУНКЦИИ ЧАТА ТЕХПОДДЕРЖКИ
+        // ИСПРАВЛЕНО: Чтение сообщений без багов сортировки базы данных
         function loadChatMessages() {
             db.collection("chats")
               .where("userId", "==", currentUser.uid)
-              .orderBy("createdAt", "asc")
               .onSnapshot((snapshot) => {
                   const chatBox = document.getElementById('chatBox');
                   chatBox.innerHTML = '';
+                  
+                  let messages = [];
                   snapshot.forEach((doc) => {
-                      const msgData = doc.data();
+                      messages.push(doc.data());
+                  });
+                  
+                  // Сортируем локально по дате создания
+                  messages.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+                  messages.forEach((msgData) => {
                       const msgClass = msgData.sender === 'client' ? 'client' : 'admin';
                       chatBox.innerHTML += `<div class="msg ${msgClass}">${msgData.text}</div>`;
                   });
@@ -304,4 +363,4 @@
     </script>
 </body>
 </html>
-                
+          

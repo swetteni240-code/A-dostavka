@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +20,6 @@
         .btn-danger:hover { background: #a93226; }
         .no-data { color: #666; font-size: 16px; }
 
-        /* Стили админ-чата */
         .chat-layout { display: flex; gap: 20px; height: 350px; background: #222; border-radius: 8px; border: 1px solid #333; overflow: hidden; }
         .chat-users-list { width: 30%; background: #1a1a1a; border-right: 1px solid #333; overflow-y: auto; padding: 10px; }
         .user-tab { padding: 10px; background: #2b2b2b; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 13px; text-overflow: ellipsis; overflow: hidden; }
@@ -39,24 +38,19 @@
     <div class="container">
         <h1>Пульт управления «А-Доставка» 🔔</h1>
 
-        <!-- Заявки на Премиум -->
         <h2>Заявки на подписку А-Доставка+ PRO 💳</h2>
         <div id="premiumRequestsContainer">
             <div class="no-data">Заявок на проверку оплаты нет...</div>
         </div>
 
-        <!-- Активные заказы -->
         <h2>Активные заказы клиентов 📦</h2>
         <div id="ordersContainer">
             <div class="no-data">Новых заказов пока нет...</div>
         </div>
 
-        <!-- ЧАТЫ ТЕХПОДДЕРЖКИ -->
         <h2>Чат техподдержки с клиентами 💬</h2>
         <div class="chat-layout">
-            <div class="chat-users-list" id="chatUsersList">
-                <!-- Сюда подгружаются пользователи, которые написали -->
-            </div>
+            <div class="chat-users-list" id="chatUsersList"></div>
             <div class="chat-window">
                 <div class="chat-messages" id="adminChatMessages">
                     <div class="no-data" style="text-align:center; margin-top:100px;">Выберите чат слева для начала общения</div>
@@ -112,7 +106,7 @@
             .then(() => alert('Подписка PRO активирована!'));
         }
 
-        // 2. СЛУШАЕМ ЗАКАЗЫ + НАЧИСЛЕНИЕ БОНУСОВ ПО КНОПКЕ
+        // 2. СЛУШАЕМ ЗАКАЗЫ
         db.collection("orders").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
             const container = document.getElementById('ordersContainer');
             container.innerHTML = '';
@@ -123,6 +117,10 @@
             snapshot.forEach((doc) => {
                 const order = doc.data();
                 if (order.status !== "Выполнен" && order.status !== "Отменен") {
+                    let bonusInfoText = order.spentBonuses > 0 
+                        ? `<p style="color: #e74c3c;"><b>Оплачено бонусами: ${order.spentBonuses}₽</b></p>` 
+                        : '';
+
                     container.innerHTML += `
                         <div class="card">
                             <div class="status-badge">${order.status}</div>
@@ -132,23 +130,21 @@
                             <p style="background: #333; padding: 5px; border-radius: 4px; margin: 5px 0;">
                                 <strong>Тип оплаты:</strong> <span style="color:#ffcc00;">${order.paymentMethod || 'Не указан'}</span>
                             </p>
-                            <p><strong>К оплате за доставку:</strong> ${order.cost}</p>
-                            <p style="color: #2ecc71; font-weight: bold;">Будет начислено бонусов после закрытия: +${order.calculatedBonuses || 0}₽</p>
+                            ${bonusInfoText}
+                            <p><strong>К оплате наличными/переводом:</strong> <b style="font-size:18px; color:#ffcc00;">${order.cost}</b></p>
+                            <p style="color: #2ecc71; font-weight: bold;">Будет начислено бонусов клиенту: +${order.calculatedBonuses || 0}₽</p>
                             
                             <button class="btn" onclick="completeOrder('${doc.id}', '${order.userId}', ${order.calculatedBonuses || 0})">✔ Заказ доставлен и оплачен (+бонусы)</button>
-                            <button class="btn btn-danger" onclick="cancelOrder('${doc.id}')">❌ Отменить заказ</button>
+                            <button class="btn btn-danger" onclick="cancelOrder('${doc.id}', '${order.userId}', ${order.spentBonuses || 0})">❌ Отменить и вернуть бонусы</button>
                         </div>
                     `;
                 }
             });
         });
 
-        // Функция завершения заказа с начислением бонусов
         function completeOrder(orderId, userId, bonusesToAward) {
-            // Сначала обновляем статус заказа
             db.collection("orders").doc(orderId).update({ status: "Выполнен" })
             .then(() => {
-                // Затем берем профиль юзера, смотрим текущие бонусы и добавляем новые
                 const userRef = db.collection("users").doc(userId);
                 db.runTransaction((transaction) => {
                     return transaction.get(userRef).then((userDoc) => {
@@ -157,20 +153,36 @@
                         transaction.update(userRef, { bonuses: currentBonuses + bonusesToAward });
                     });
                 }).then(() => {
-                    alert('Заказ выполнен! Клиенту начислены бонусные рубли.');
+                    alert('Заказ выполнен! Клиенту добавлены бонусные рубли за покупку.');
                 });
             });
         }
 
-        function cancelOrder(orderId) {
+        function cancelOrder(orderId, userId, spentBonusesToReturn) {
             if(confirm("Вы уверены, что хотите отменить этот заказ?")) {
                 db.collection("orders").doc(orderId).update({ status: "Отменен" })
-                .then(() => alert('Заказ отменен.'));
+                .then(() => {
+                    // Если клиент тратил бонусы на этот заказ, возвращаем их ему обратно на баланс
+                    if (spentBonusesToReturn > 0) {
+                        const userRef = db.collection("users").doc(userId);
+                        db.runTransaction((transaction) => {
+                            return transaction.get(userRef).then((userDoc) => {
+                                if (!userDoc.exists) return;
+                                let currentBonuses = userDoc.data().bonuses || 0;
+                                transaction.update(userRef, { bonuses: currentBonuses + spentBonusesToReturn });
+                            });
+                        }).then(() => {
+                            alert('Заказ отменен. Потраченные бонусы возвращены на баланс клиента.');
+                        });
+                    } else {
+                        alert('Заказ отменен.');
+                    }
+                });
             }
         }
 
         // 3. УПРАВЛЕНИЕ ЧАТАМИ ТЕХПОДДЕРЖКИ
-        db.collection("chats").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+        db.collection("chats").onSnapshot((snapshot) => {
             const usersListContainer = document.getElementById('chatUsersList');
             const uniqueUsers = {};
 
@@ -199,22 +211,21 @@
             document.getElementById('adminChatInput').disabled = false;
             document.getElementById('adminSendBtn').disabled = false;
 
-            // Перерисовываем активную вкладку
-            const tabs = document.getElementsByClassName('user-tab');
-            for(let tab of tabs) {
-                tab.classList.remove('active');
-                if(tab.innerText === userEmail) tab.classList.add('active');
-            }
-
-            // Слушаем сообщения конкретного выбранного чата
             db.collection("chats")
               .where("userId", "==", userId)
-              .orderBy("createdAt", "asc")
               .onSnapshot((snapshot) => {
                   const msgContainer = document.getElementById('adminChatMessages');
                   msgContainer.innerHTML = '';
+                  
+                  let messages = [];
                   snapshot.forEach((doc) => {
-                      const msg = doc.data();
+                      messages.push(doc.data());
+                  });
+                  
+                  // Локальная сортировка сообщений по времени
+                  messages.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+                  messages.forEach((msg) => {
                       const msgClass = msg.sender === 'admin' ? 'admin' : 'client';
                       msgContainer.innerHTML += `<div class="admin-msg ${msgClass}"><strong>${msg.sender === 'admin' ? 'Вы' : 'Клиент'}:</strong> ${msg.text}</div>`;
                   });
@@ -229,7 +240,7 @@
 
             db.collection("chats").add({
                 userId: activeChatUserId,
-                userEmail: activeChatUserEmail,
+                userEmail: activeChatUserEmail, // ИСПРАВЛЕНО: Теперь почта передается верно
                 sender: 'admin',
                 text: text,
                 createdAt: new Date()
