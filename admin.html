@@ -82,7 +82,7 @@
         let activeChatUserId = null;
         let activeChatUserEmail = '';
 
-        // 1. СЛУШАЕМ ЗАЯВКИ НА ПРЕМИУМ
+        // 1. ЗАЯВКИ НА ПРЕМИУМ
         db.collection("users").where("premiumRequested", "==", true).onSnapshot((snapshot) => {
             const container = document.getElementById('premiumRequestsContainer');
             container.innerHTML = '';
@@ -121,6 +121,10 @@
                         ? `<p style="color: #e74c3c;"><b>Оплачено бонусами: ${order.spentBonuses}₽</b></p>` 
                         : '';
 
+                    let promoInfoText = order.appliedPromo 
+                        ? `<p style="color: #3498db; font-weight: bold;">Использован промокод: ${order.appliedPromo}</p>` 
+                        : '';
+
                     container.innerHTML += `
                         <div class="card">
                             <div class="status-badge">${order.status}</div>
@@ -131,6 +135,7 @@
                                 <strong>Тип оплаты:</strong> <span style="color:#ffcc00;">${order.paymentMethod || 'Не указан'}</span>
                             </p>
                             ${bonusInfoText}
+                            ${promoInfoText}
                             <p><strong>К оплате наличными/переводом:</strong> <b style="font-size:18px; color:#ffcc00;">${order.cost}</b></p>
                             <p style="color: #2ecc71; font-weight: bold;">Будет начислено бонусов клиенту: +${order.calculatedBonuses || 0}₽</p>
                             
@@ -162,7 +167,6 @@
             if(confirm("Вы уверены, что хотите отменить этот заказ?")) {
                 db.collection("orders").doc(orderId).update({ status: "Отменен" })
                 .then(() => {
-                    // Если клиент тратил бонусы на этот заказ, возвращаем их ему обратно на баланс
                     if (spentBonusesToReturn > 0) {
                         const userRef = db.collection("users").doc(userId);
                         db.runTransaction((transaction) => {
@@ -222,7 +226,6 @@
                       messages.push(doc.data());
                   });
                   
-                  // Локальная сортировка сообщений по времени
                   messages.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
 
                   messages.forEach((msg) => {
@@ -240,7 +243,7 @@
 
             db.collection("chats").add({
                 userId: activeChatUserId,
-                userEmail: activeChatUserEmail, // ИСПРАВЛЕНО: Теперь почта передается верно
+                userEmail: activeChatUserEmail,
                 sender: 'admin',
                 text: text,
                 createdAt: new Date()
