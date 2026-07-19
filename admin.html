@@ -3,61 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель администратора — А-Доставка</title>
+    <title>Главный пульт управления — А-Доставка</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
-        body { background: #111; color: #fff; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        h1, h2 { color: #ffcc00; margin-bottom: 20px; border-bottom: 2px solid #ffcc00; padding-bottom: 10px; }
-        h2 { margin-top: 30px; font-size: 20px; }
-        .card { background: #222; border: 1px solid #333; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+        body { background: #0f172a; color: #f8fafc; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1, h2 { color: #ffcc00; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 2px solid #ffcc00; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { background: #1e293b; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background: #ffcc00; color: #000; }
+        .card { background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
         .status-badge { display: inline-block; background: #ffcc00; color: #111; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; margin-bottom: 10px; }
-        .btn { background: #27ae60; color: #fff; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn:hover { background: #219653; }
+        .btn { background: #27ae60; color: #fff; border: none; padding: 8px 14px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
         .btn-premium { background: #2f80ed; }
-        .btn-premium:hover { background: #1b64c4; }
-        .btn-danger { background: #c0392b; margin-left: 10px; }
-        .btn-danger:hover { background: #a93226; }
-        .no-data { color: #666; font-size: 16px; }
-
-        .chat-layout { display: flex; gap: 20px; height: 350px; background: #222; border-radius: 8px; border: 1px solid #333; overflow: hidden; }
-        .chat-users-list { width: 30%; background: #1a1a1a; border-right: 1px solid #333; overflow-y: auto; padding: 10px; }
-        .user-tab { padding: 10px; background: #2b2b2b; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 13px; text-overflow: ellipsis; overflow: hidden; }
-        .user-tab.active { background: #ffcc00; color: #111; font-weight: bold; }
+        .select-courier { padding: 8px; border-radius: 5px; background: #334155; color: white; border: 1px solid #475569; margin-top: 10px; width: 200px; }
+        
+        /* Чат разметка */
+        .chat-layout { display: flex; gap: 20px; height: 350px; background: #1e293b; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
+        .chat-users-list { width: 30%; background: #0f172a; overflow-y: auto; padding: 10px; }
+        .user-tab { padding: 10px; background: #334155; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+        .user-tab.active { background: #ffcc00; color: #000; font-weight: bold; }
         .chat-window { width: 70%; display: flex; flex-direction: column; padding: 15px; }
-        .chat-messages { flex: 1; overflow-y: auto; background: #151515; border-radius: 6px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
-        .admin-msg { max-width: 75%; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; word-break: break-word; }
-        .admin-msg.client { background: #444; color: #fff; align-self: flex-start; }
-        .admin-msg.admin { background: #ffcc00; color: #111; align-self: flex-end; }
-        .admin-chat-input { display: flex; gap: 10px; }
-        .admin-chat-input input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #333; color: #fff; outline: none; }
+        .chat-messages { flex: 1; overflow-y: auto; background: #0f172a; border-radius: 6px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
+        .admin-msg { max-width: 75%; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
+        .admin-msg.client { background: #475569; color: white; align-self: flex-start; }
+        .admin-msg.courier { background: #2ecc71; color: white; align-self: flex-start; }
+        .admin-msg.admin { background: #ffcc00; color: #000; align-self: flex-end; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Пульт управления «А-Доставка» 🔔</h1>
+        <h1>Панель Главного Администратора 👑</h1>
 
-        <h2>Заявки на подписку А-Доставка+ PRO 💳</h2>
-        <div id="premiumRequestsContainer">
-            <div class="no-data">Заявок на проверку оплаты нет...</div>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('active-orders')">Активные заказы</button>
+            <button class="tab-btn" onclick="switchTab('archive-orders')">Архив заказов (Техподдержка)</button>
         </div>
 
-        <h2>Активные заказы клиентов 📦</h2>
-        <div id="ordersContainer">
-            <div class="no-data">Новых заказов пока нет...</div>
+        <!-- Очередь заявок PRO -->
+        <div id="premiumSection">
+            <h2>Заявки на А-Доставка+ PRO 💳</h2>
+            <div id="premiumRequestsContainer"></div>
         </div>
 
-        <h2>Чат техподдержки с клиентами 💬</h2>
+        <!-- Главный рабочий экран -->
+        <div id="mainOrdersTab">
+            <h2 id="pageTitle">Текущие заказы в обработке</h2>
+            <div id="ordersContainer"></div>
+        </div>
+
+        <!-- Чат между всеми сторонами -->
+        <h2>Управление чатами поддержки 💬</h2>
         <div class="chat-layout">
             <div class="chat-users-list" id="chatUsersList"></div>
             <div class="chat-window">
-                <div class="chat-messages" id="adminChatMessages">
-                    <div class="no-data" style="text-align:center; margin-top:100px;">Выберите чат слева для начала общения</div>
-                </div>
-                <div class="admin-chat-input">
-                    <input type="text" id="adminChatInput" placeholder="Введите ответ..." disabled>
-                    <button class="btn" style="margin:0;" id="adminSendBtn" onclick="sendAdminReply()" disabled>Ответить</button>
+                <div class="chat-messages" id="adminChatMessages"></div>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="adminChatInput" placeholder="Введите ответ..." style="flex:1; padding:10px; border-radius:5px; background:#334155; color:#fff; border:none;">
+                    <button class="btn" style="margin:0;" onclick="sendAdminReply()">Ответить</button>
                 </div>
             </div>
         </div>
@@ -75,182 +79,114 @@
             messagingSenderId: "476530558236",
             appId: "1:476530558236:web:d929217d7ed381c484e6d9"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let activeChatUserId = null;
-        let activeChatUserEmail = '';
+        let currentTab = 'active-orders', couriersList = [], activeChatUserId = null, activeChatUserEmail = '';
 
-        // 1. ЗАЯВКИ НА ПРЕМИУМ
-        db.collection("users").where("premiumRequested", "==", true).onSnapshot((snapshot) => {
-            const container = document.getElementById('premiumRequestsContainer');
-            container.innerHTML = '';
-            if (snapshot.empty) {
-                container.innerHTML = '<div class="no-data">Заявок на проверку оплаты нет...</div>';
-                return;
-            }
-            snapshot.forEach((doc) => {
-                container.innerHTML += `
-                    <div class="card">
-                        <p><strong>ID Пользователя:</strong> ${doc.id}</p>
-                        <p>Ожидает подтверждения перевода на 299₽.</p>
-                        <button class="btn btn-premium" onclick="approvePremium('${doc.id}')">✔ Деньги пришли, включить PRO</button>
-                    </div>
-                `;
+        // Загружаем список курьеров для выпадающего меню назначения
+        db.collection("users").where("role", "==", "courier").onSnapshot(snap => {
+            couriersList = [];
+            snap.forEach(d => couriersList.push({id: d.id, email: d.data().email || d.id}));
+        });
+
+        // Слушаем заявки на Премиум
+        db.collection("users").where("premiumRequested", "==", true).onSnapshot(snap => {
+            const container = document.getElementById('premiumRequestsContainer'); container.innerHTML = snap.empty ? '<p>Заявок нет</p>':'';
+            snap.forEach(doc => {
+                container.innerHTML += `<div class="card"><p>Пользователь: ${doc.id}</p><button class="btn btn-premium" onclick="approvePremium('${doc.id}')">✔ Подтвердить оплату PRO</button></div>`;
             });
         });
 
-        function approvePremium(userId) {
-            db.collection("users").doc(userId).update({ isPremium: true, premiumRequested: false })
-            .then(() => alert('Подписка PRO активирована!'));
-        }
+        function approvePremium(uid) { db.collection("users").doc(uid).update({ isPremium: true, premiumRequested: false }); }
 
-        // 2. СЛУШАЕМ ЗАКАЗЫ
-        db.collection("orders").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
-            const container = document.getElementById('ordersContainer');
-            container.innerHTML = '';
-            if (snapshot.empty) {
-                container.innerHTML = '<div class="no-data">Новых заказов пока нет...</div>';
-                return;
-            }
-            snapshot.forEach((doc) => {
-                const order = doc.data();
-                if (order.status !== "Выполнен" && order.status !== "Отменен") {
-                    let bonusInfoText = order.spentBonuses > 0 
-                        ? `<p style="color: #e74c3c;"><b>Оплачено бонусами: ${order.spentBonuses}₽</b></p>` 
-                        : '';
-
-                    let promoInfoText = order.appliedPromo 
-                        ? `<p style="color: #3498db; font-weight: bold;">Использован промокод: ${order.appliedPromo}</p>` 
-                        : '';
-
-                    container.innerHTML += `
-                        <div class="card">
-                            <div class="status-badge">${order.status}</div>
-                            <p><strong>От кого:</strong> ${order.userEmail}</p>
-                            <p><strong>Что купить:</strong> ${order.items}</p>
-                            <p><strong>Куда везти:</strong> ${order.address}</p>
-                            <p style="background: #333; padding: 5px; border-radius: 4px; margin: 5px 0;">
-                                <strong>Тип оплаты:</strong> <span style="color:#ffcc00;">${order.paymentMethod || 'Не указан'}</span>
-                            </p>
-                            ${bonusInfoText}
-                            ${promoInfoText}
-                            <p><strong>К оплате наличными/переводом:</strong> <b style="font-size:18px; color:#ffcc00;">${order.cost}</b></p>
-                            <p style="color: #2ecc71; font-weight: bold;">Будет начислено бонусов клиенту: +${order.calculatedBonuses || 0}₽</p>
-                            
-                            <button class="btn" onclick="completeOrder('${doc.id}', '${order.userId}', ${order.calculatedBonuses || 0})">✔ Заказ доставлен и оплачен (+бонусы)</button>
-                            <button class="btn btn-danger" onclick="cancelOrder('${doc.id}', '${order.userId}', ${order.spentBonuses || 0})">❌ Отменить и вернуть бонусы</button>
-                        </div>
-                    `;
-                }
-            });
-        });
-
-        function completeOrder(orderId, userId, bonusesToAward) {
-            db.collection("orders").doc(orderId).update({ status: "Выполнен" })
-            .then(() => {
-                const userRef = db.collection("users").doc(userId);
-                db.runTransaction((transaction) => {
-                    return transaction.get(userRef).then((userDoc) => {
-                        if (!userDoc.exists) return;
-                        let currentBonuses = userDoc.data().bonuses || 0;
-                        transaction.update(userRef, { bonuses: currentBonuses + bonusesToAward });
-                    });
-                }).then(() => {
-                    alert('Заказ выполнен! Клиенту добавлены бонусные рубли за покупку.');
-                });
-            });
-        }
-
-        function cancelOrder(orderId, userId, spentBonusesToReturn) {
-            if(confirm("Вы уверены, что хотите отменить этот заказ?")) {
-                db.collection("orders").doc(orderId).update({ status: "Отменен" })
-                .then(() => {
-                    if (spentBonusesToReturn > 0) {
-                        const userRef = db.collection("users").doc(userId);
-                        db.runTransaction((transaction) => {
-                            return transaction.get(userRef).then((userDoc) => {
-                                if (!userDoc.exists) return;
-                                let currentBonuses = userDoc.data().bonuses || 0;
-                                transaction.update(userRef, { bonuses: currentBonuses + spentBonusesToReturn });
-                            });
-                        }).then(() => {
-                            alert('Заказ отменен. Потраченные бонусы возвращены на баланс клиента.');
+        // Слушаем заказы в зависимости от открытой вкладки (Архив или Активные)
+        function loadOrdersSystem() {
+            db.collection("orders").orderBy("createdAt", "desc").onSnapshot(snap => {
+                const container = document.getElementById('ordersContainer');
+                container.innerHTML = snap.empty ? '<p>Заказов нет</p>':'';
+                
+                snap.forEach(doc => {
+                    const order = doc.data();
+                    const isArchive = (order.status === "Выполнен" || order.status === "Отменен");
+                    
+                    if ((currentTab === 'active-orders' && !isArchive) || (currentTab === 'archive-orders' && isArchive)) {
+                        let options = `<option value="">-- Выберите курьера --</option>`;
+                        couriersList.forEach(c => {
+                            let sel = order.courierId === c.id ? 'selected' : '';
+                            options += `<option value="${c.id}|${c.email}" ${sel}>${c.email}</option>`;
                         });
-                    } else {
-                        alert('Заказ отменен.');
+
+                        container.innerHTML += `
+                            <div class="card" style="border-left: 5px solid ${isArchive ? '#c0392b':'#ffcc00'}">
+                                <div class="status-badge">${order.status}</div>
+                                <p><strong>От кого:</strong> ${order.userEmail}</p>
+                                <p><strong>Что:</strong> ${order.items}</p>
+                                <p><strong>Куда:</strong> ${order.address}</p>
+                                <p><strong>Цена:</strong> ${order.cost} (Кэшбэк: +${order.calculatedBonuses}₽)</p>
+                                ${order.appliedPromo ? `<p style="color:#2f80ed">Промокод: ${order.appliedPromo}</p>`:''}
+                                <p><strong>Курьер:</strong> ${order.courierEmail || '<span style="color:red">Не назначен</span>'}</p>
+                                ${!isArchive ? `
+                                    <select class="select-courier" onchange="assignCourier('${doc.id}', this.value)">
+                                        ${options}
+                                    </select>
+                                ` : `<p style="color:#888; font-size:12px; margin-top:5px;">ID Заказа для техподдержки: ${doc.id}</p>`}
+                            </div>
+                        `;
                     }
                 });
-            }
+            });
         }
 
-        // 3. УПРАВЛЕНИЕ ЧАТАМИ ТЕХПОДДЕРЖКИ
-        db.collection("chats").onSnapshot((snapshot) => {
-            const usersListContainer = document.getElementById('chatUsersList');
-            const uniqueUsers = {};
+        function assignCourier(orderId, val) {
+            if(!val) return;
+            const [cId, cEmail] = val.split('|');
+            db.collection("orders").doc(orderId).update({
+                courierId: cId, courierEmail: cEmail, status: "Курьер назначен"
+            }).then(() => alert("Курьер успешно назначен на заказ!"));
+        }
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                if (!uniqueUsers[data.userId]) {
-                    uniqueUsers[data.userId] = data.userEmail || "Пользователь";
-                }
-            });
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('pageTitle').innerText = tab === 'active-orders' ? "Текущие заказы в обработке" : "Архив завершенных заказов";
+            document.getElementById('premiumSection').style.display = tab === 'active-orders' ? 'block' : 'none';
+            loadOrdersSystem();
+        }
 
-            usersListContainer.innerHTML = '';
-            for (let uid in uniqueUsers) {
-                const activeClass = uid === activeChatUserId ? 'active' : '';
-                usersListContainer.innerHTML += `
-                    <div class="user-tab ${activeClass}" onclick="selectChat('${uid}', '${uniqueUsers[uid]}')">
-                        ${uniqueUsers[uid]}
-                    </div>
-                `;
+        // ЧАТЫ
+        db.collection("chats").onSnapshot(snap => {
+            const list = document.getElementById('chatUsersList'); const unique = {};
+            snap.forEach(d => { const data = d.data(); unique[data.userId] = data.userEmail || "Пользователь"; });
+            list.innerHTML = '';
+            for (let uid in unique) {
+                list.innerHTML += `<div class="user-tab ${uid===activeChatUserId?'active':''}" onclick="selectChat('${uid}','${unique[uid]}')">${unique[uid]}</div>`;
             }
         });
 
-        function selectChat(userId, userEmail) {
-            activeChatUserId = userId;
-            activeChatUserEmail = userEmail;
-
-            document.getElementById('adminChatInput').disabled = false;
-            document.getElementById('adminSendBtn').disabled = false;
-
-            db.collection("chats")
-              .where("userId", "==", userId)
-              .onSnapshot((snapshot) => {
-                  const msgContainer = document.getElementById('adminChatMessages');
-                  msgContainer.innerHTML = '';
-                  
-                  let messages = [];
-                  snapshot.forEach((doc) => {
-                      messages.push(doc.data());
-                  });
-                  
-                  messages.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-
-                  messages.forEach((msg) => {
-                      const msgClass = msg.sender === 'admin' ? 'admin' : 'client';
-                      msgContainer.innerHTML += `<div class="admin-msg ${msgClass}"><strong>${msg.sender === 'admin' ? 'Вы' : 'Клиент'}:</strong> ${msg.text}</div>`;
-                  });
-                  msgContainer.scrollTop = msgContainer.scrollHeight;
-              });
+        function selectChat(uid, email) {
+            activeChatUserId = uid; activeChatUserEmail = email;
+            db.collection("chats").where("userId", "==", uid).onSnapshot(snap => {
+                const box = document.getElementById('adminChatMessages'); box.innerHTML = '';
+                let msgs = []; snap.forEach(d => msgs.push(d.data()));
+                msgs.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
+                msgs.forEach(m => {
+                    box.innerHTML += `<div class="admin-msg ${m.sender}"><strong>${m.sender}:</strong> ${m.text}</div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
         }
 
         function sendAdminReply() {
-            const input = document.getElementById('adminChatInput');
-            const text = input.value.trim();
-            if(!text || !activeChatUserId) return;
-
+            const inp = document.getElementById('adminChatInput'); if(!inp.value.trim() || !activeChatUserId) return;
             db.collection("chats").add({
-                userId: activeChatUserId,
-                userEmail: activeChatUserEmail,
-                sender: 'admin',
-                text: text,
-                createdAt: new Date()
-            }).then(() => {
-                input.value = '';
-            });
+                userId: activeChatUserId, userEmail: activeChatUserEmail,
+                sender: 'admin', text: inp.value.trim(), createdAt: new Date()
+            }).then(() => inp.value = '');
         }
+
+        loadOrdersSystem();
     </script>
 </body>
 </html>
